@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALBUM 3 REYES 2026 V4.4</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #0b1a2d; color: white; padding-bottom: 110px; }
+        .header { background: #002b5c; padding: 15px; text-align: center; border-bottom: 4px solid #ffcc00; position: sticky; top: 0; z-index: 1000; }
+        .pasos { font-size: 13px; color: #ffcc00; margin-top: 8px; font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; }
+        
+        .acordeon-btn { background: #ffcc00; color: #000; width: 100%; padding: 15px; font-weight: bold; border: none; margin-top: 4px; cursor: pointer; text-transform: uppercase; font-size: 15px; }
+        .section-content { display: block; overflow-x: auto; background: #000; padding: 10px; }
+        .wrapper { display: flex; gap: 10px; }
+
+        table { background: white; color: black; border-collapse: collapse; min-width: 250px; border-radius: 5px; }
+        th { background: #222; color: #ffcc00; padding: 10px; }
+        td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+
+        .st-tengocromo { background: #28a745 !important; color: white; }
+        .st-notengcromo { background: #fd7e14 !important; color: white; }
+        .st-tengo { background: #d4edda !important; }
+        .st-notengo { background: #fff3cd !important; }
+
+        .footer { position: fixed; bottom: 0; width: 100%; background: #000; padding: 15px; display: flex; gap: 10px; box-sizing: border-box; border-top: 2px solid #002b5c; }
+        .btn-report { background: #ffcc00; color: #000; flex: 1.2; border: none; padding: 15px; font-weight: bold; border-radius: 30px; cursor: pointer; font-size: 13px; }
+        .btn-send { background: #25d366; color: white; flex: 1; border: none; padding: 15px; font-weight: bold; border-radius: 30px; cursor: pointer; font-size: 13px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; }
+        .modal-body { background: white; color: black; width: 85%; margin: 15% auto; padding: 20px; border-radius: 10px; text-align: center; }
+        #modalText { text-align: left; background: #f0f0f0; padding: 15px; white-space: pre-wrap; font-family: monospace; border: 1px solid #ccc; margin: 15px 0; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h3 style="margin:0;">⚽ ALBUM 3 REYES 2026</h3>
+    <input type="text" id="user_name" placeholder="INGRESE NOMBRE" style="width:85%; padding:12px; margin-top:10px; text-align:center; border-radius: 5px; border: 2px solid #ffcc00; font-weight: bold;">
+    <div class="pasos">PASOS: 1. Ingrese Nombre -> 2. Selecciona Figuras -> 3. Click en ENVIAR</div>
+</div>
+
+<button class="acordeon-btn" onclick="toggle('sec1')">1. FIGURITAS MUNDIAL</button>
+<div id="sec1" class="section-content"><div id="g1" class="wrapper"></div></div>
+
+<button class="acordeon-btn" onclick="toggle('sec2')">2. REPECHAJE Y TROQUELADAS</button>
+<div id="sec2" class="section-content"><div id="g2" class="wrapper"></div></div>
+
+<button class="acordeon-btn" onclick="toggle('sec3')">3. GRUPO DE LETRAS</button>
+<div id="sec3" class="section-content"><div id="g3" class="wrapper"></div></div>
+
+<div class="footer">
+    <button class="btn-report" onclick="hacerReporte()">FALTANTES MAYKOL 📋</button>
+    <button class="btn-send" onclick="prepararWhatsApp()">ENVIAR A MAYKOL 📲</button>
+</div>
+
+<div id="modalApp" class="modal">
+    <div class="modal-body">
+        <h3 id="modalTitle">Confirmar</h3>
+        <div id="modalText"></div>
+        <button id="btnAccion" style="background:#002b5c; color:white; width:100%; padding:15px; border:none; font-weight:bold; border-radius:5px;">CONTINUAR</button>
+        <button onclick="cerrar()" style="background:#ccc; width:100%; padding:10px; border:none; margin-top:8px; border-radius:5px;">VOLVER</button>
+    </div>
+</div>
+
+<script>
+    let memoriaTotal = {};
+
+    function toggle(id) {
+        const s = document.getElementById(id);
+        s.style.display = (s.style.display === "none") ? "block" : "none";
+    }
+
+    function aplicar(rowId, chkId, txtId, val, key) {
+        const r = document.getElementById(rowId);
+        const c = document.getElementById(chkId);
+        const t = document.getElementById(txtId);
+        if(!r) return;
+
+        t.innerText = val || "---";
+        let v = val.toLowerCase().trim().replace(/\s/g, '');
+        memoriaTotal[key] = v; // Guardamos el estado real (tengo/tengocromo/etc)
+
+        if(v.includes("notengo") || v.includes("notengcromo")) {
+            r.classList.add(v.includes("cromo") ? "st-notengcromo" : "st-notengo");
+            c.disabled = true;
+        } else if(v.includes("tengocromo")) {
+            r.classList.add("st-tengocromo");
+        } else if(v.includes("tengo")) {
+            r.classList.add("st-tengo");
+        }
+
+        c.onclick = (e) => {
+            if(!document.getElementById('user_name').value.trim()) {
+                alert("⚠️ POR FAVOR, INGRESE SU NOMBRE PRIMERO.");
+                e.preventDefault();
+            }
+        };
+    }
+
+    function cargar() {
+        fetch('/api/figuritas').then(res => res.json()).then(data => {
+            const g1 = document.getElementById('g1'); g1.innerHTML = "";
+            [[1,99],[100,199],[200,299],[300,399],[400,499],[500,584]].forEach(rng => {
+                let h = `<table><tr><th colspan="3">${rng[0]}-${rng[1]}</th></tr>`;
+                for(let i=rng[0]; i<=rng[1]; i++) h += `<tr id="m-r-${i}"><td>${i}</td><td id="m-t-${i}"></td><td><input type="checkbox" class="chk" id="m-c-${i}" value="${i}"></td></tr>`;
+                g1.innerHTML += h + "</table>";
+            });
+            Object.keys(data.mundial).forEach(k => aplicar(`m-r-${k}`, `m-c-${k}`, `m-t-${k}`, data.mundial[k], k));
+
+            const g2 = document.getElementById('g2'); g2.innerHTML = "";
+            ["grupo_e", "grupo_t"].forEach(grp => {
+                let h = `<table><tr><th colspan="3">${grp=="grupo_e"?"REP. E":"TROQ. T"}</th></tr>`;
+                Object.keys(data[grp]).forEach(k => h += `<tr id="et-r-${k}"><td>${k}</td><td id="et-t-${k}"></td><td><input type="checkbox" class="chk" id="et-c-${k}" value="${k}"></td></tr>`);
+                g2.innerHTML += h + "</table>";
+                Object.keys(data[grp]).forEach(k => aplicar(`et-r-${k}`, `et-c-${k}`, `et-t-${k}`, data[grp][k], k));
+            });
+
+            const g3 = document.getElementById('g3');
+            let hL = `<table><tr><th colspan="3">LETRAS ESPECIALES</th></tr>`;
+            Object.keys(data.letras).forEach(k => hL += `<tr id="l-r-${k}"><td><b>${k}</b></td><td id="l-t-${k}"></td><td><input type="checkbox" class="chk" id="l-c-${k}" value="${k}"></td></tr>`);
+            g3.innerHTML = hL + "</table>";
+            Object.keys(data.letras).forEach(k => aplicar(`l-r-${k}`, `l-c-${k}`, `l-t-${k}`, data.letras[k], k));
+        });
+    }
+
+    function hacerReporte() {
+        let f = [], c = [];
+        Object.keys(memoriaTotal).forEach(k => {
+            if(memoriaTotal[k].includes("notengcromo")) c.push(k);
+            else if(memoriaTotal[k].includes("notengo")) f.push(k);
+        });
+        let txt = `FALTANTES MAYKOL\n\n1. Figuritas que le faltan: ${f.join(", ")}\n\n2. Cromos que le faltan: ${c.join(", ")}`;
+        document.getElementById('modalTitle').innerText = "📋 Lista de Faltantes";
+        document.getElementById('modalText').innerText = txt;
+        document.getElementById('btnAccion').innerText = "DESCARGAR TXT";
+        document.getElementById('btnAccion').onclick = () => {
+            const blob = new Blob([txt], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Faltantes_Maykol.txt`;
+            a.click();
+        };
+        document.getElementById('modalApp').style.display = "block";
+    }
+
+    // Mejora V4.4: Clasificación correcta para WhatsApp
+    function prepararWhatsApp() {
+        const nom = document.getElementById('user_name').value.trim();
+        const checks = Array.from(document.querySelectorAll('.chk:checked'));
+        
+        if(!nom || checks.length === 0) return alert("Ingrese su nombre y seleccione figuras.");
+        
+        let pFiguritas = [], pCromos = [];
+        
+        checks.forEach(chk => {
+            const id = chk.value;
+            const estado = memoriaTotal[id] || "";
+            // Si en el Excel dice "Tengo Cromo", lo mandamos a la lista de Cromos
+            if(estado.includes("cromo")) {
+                pCromos.push(id);
+            } else {
+                pFiguritas.push(id);
+            }
+        });
+
+        let msg = `Hola Maykol, envío mi pedido:\n\nColeccionista: *${nom}*\n\n`;
+        if(pFiguritas.length > 0) msg += `1. Figuritas: ${pFiguritas.join(", ")}\n`;
+        if(pCromos.length > 0) msg += `2. Cromos: ${pCromos.join(", ")}\n`;
+        
+        document.getElementById('modalTitle').innerText = "Confirmar Pedido";
+        document.getElementById('modalText').innerText = msg;
+        document.getElementById('btnAccion').innerText = "ENVIAR A WHATSAPP";
+        document.getElementById('btnAccion').onclick = () => {
+            window.open(`https://api.whatsapp.com/send?phone=51925137630&text=${encodeURIComponent(msg)}`);
+        };
+        document.getElementById('modalApp').style.display = "block";
+    }
+
+    function cerrar() { document.getElementById('modalApp').style.display = "none"; }
+    
+    cargar();
+</script>
+</body>
+</html>
